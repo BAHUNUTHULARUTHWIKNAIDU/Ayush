@@ -1,0 +1,566 @@
+// Prisma Schema for AYUSH SkillConnect
+// Smart India Hackathon 2026 Problem Statement PS26044
+// Ministry of AYUSH & All India Institute of Ayurveda
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  STUDENT
+  FACULTY
+  INDUSTRY
+  INSTITUTION
+  MINISTRY
+}
+
+enum DisciplineType {
+  AYURVEDA
+  YOGA_NATUROPATHY
+  UNANI
+  SIDDHA
+  SOWA_RIGPA
+  HOMOEOPATHY
+}
+
+enum VerificationLevel {
+  SELF_DECLARED
+  ASSESSED
+  FACULTY_VERIFIED
+  INDUSTRY_VERIFIED
+}
+
+enum ApplicationStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  SHORTLISTED
+  INTERVIEW_SCHEDULED
+  OFFER_EXTENDED
+  ACCEPTED
+  REJECTED
+}
+
+enum OpportunityType {
+  INTERNSHIP
+  JOB
+  PROJECT
+  TRAINING
+}
+
+enum WorkMode {
+  ON_SITE
+  REMOTE
+  HYBRID
+}
+
+model User {
+  id             String         @id @default(uuid())
+  email          String         @unique
+  phone          String?        @unique
+  fullName       String
+  role           Role           @default(STUDENT)
+  avatarUrl      String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  student        Student?
+  faculty        Faculty?
+  industry       Industry?
+  institution    Institution?
+  notifications  Notification[]
+  calendarEvents CalendarEvent[]
+  auditLogs      AuditLog[]
+}
+
+model AYUSHDiscipline {
+  id          String         @id @default(uuid())
+  type        DisciplineType @unique
+  name        String
+  description String
+  code        String
+  skills      Skill[]
+  students    Student[]
+}
+
+model SkillCategory {
+  id          String   @id @default(uuid())
+  name        String   // e.g., "AYUSH Core Knowledge", "Clinical Practice", "Research Methodology", "Digital Health", "Data Analysis", "Documentation"
+  code        String   @unique
+  description String
+  skills      Skill[]
+}
+
+model Skill {
+  id               String            @id @default(uuid())
+  name             String            // e.g. "Ayurvedic Pharmacology", "Panchakarma Protocol", "Clinical Data Analysis"
+  code             String            @unique
+  description      String
+  categoryId       String
+  category         SkillCategory     @relation(fields: [categoryId], references: [id])
+  disciplineId     String?
+  discipline       AYUSHDiscipline?  @relation(fields: [disciplineId], references: [id])
+  
+  studentAssessments SkillAssessment[]
+  skillGaps        SkillGap[]
+  demands          IndustrySkillDemand[]
+  portfolioEvidence PortfolioEvidence[]
+  courseSkills     CourseSkill[]
+  opportunitySkills OpportunitySkill[]
+}
+
+model Student {
+  id                   String            @id @default(uuid())
+  userId               String            @unique
+  user                 User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  enrollmentNo         String            @unique
+  disciplineId         String
+  discipline           AYUSHDiscipline   @relation(fields: [disciplineId], references: [id])
+  institutionId        String
+  institution          Institution       @relation(fields: [institutionId], references: [id])
+  programName          String            // e.g., "BAMS", "BNYS", "BHMS"
+  currentYear          Int               // 1, 2, 3, 4, or 5 (Internship)
+  careerInterest       String            // e.g., "Clinical Research", "Ayurvedic Product Development"
+  overallReadiness     Float             @default(0.0) // 0 - 100%
+  bio                  String?
+
+  portfolio            Portfolio?
+  assessments          AssessmentResult[]
+  skillAssessments     SkillAssessment[]
+  skillGaps            SkillGap[]
+  careerRoadmaps       CareerRoadmap[]
+  applications         Application[]
+  mentorships          Mentorship[]
+  feedbackReceived     IndustryFeedback[]
+  facultyFeedback      FacultyFeedback[]
+}
+
+model Faculty {
+  id             String          @id @default(uuid())
+  userId         String          @unique
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  institutionId  String
+  institution    Institution     @relation(fields: [institutionId], references: [id])
+  designation    String          // e.g. "Associate Professor - Dravyaguna"
+  department     String
+  specialization String
+  isMentor       Boolean         @default(true)
+  mentorCapacity Int             @default(10)
+  
+  verifications  Verification[]
+  mentorships    Mentorship[]
+  feedbackGiven  FacultyFeedback[]
+  fdpAttendances FDPAttendance[]
+}
+
+model Institution {
+  id               String                      @id @default(uuid())
+  userId           String                      @unique
+  user             User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name             String                      // e.g., "All India Institute of Ayurveda (AIIA), New Delhi"
+  code             String                      @unique
+  state            String
+  city             String
+  accreditation    String                      // NAAC / NABH
+  activeStudents   Int                         @default(0)
+  placementRate    Float                       @default(0.0)
+
+  students         Student[]
+  faculty          Faculty[]
+  analytics        InstitutionSkillAnalytics[]
+  curriculumRecs   CurriculumRecommendation[]
+  mous             MoU[]
+}
+
+model Industry {
+  id              String                @id @default(uuid())
+  userId          String                @unique
+  user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyName     String                // e.g., "Kerala Ayurveda Ltd.", "Vaidya Analytics"
+  sector          String                // Clinical Research, Herbal Formulations, Digital AYUSH
+  headquarters    String
+  website         String?
+  verifiedPartner Boolean               @default(true)
+
+  opportunities   Opportunity[]
+  demands         IndustrySkillDemand[]
+  feedbackGiven   IndustryFeedback[]
+  mous            MoU[]
+  industryProjects IndustryProject[]
+}
+
+model Assessment {
+  id           String               @id @default(uuid())
+  title        String
+  discipline   DisciplineType
+  timeLimitMin Int                  @default(20)
+  totalScore   Int                  @default(100)
+  questions    AssessmentQuestion[]
+  results      AssessmentResult[]
+}
+
+model AssessmentQuestion {
+  id           String     @id @default(uuid())
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  questionText String
+  type         String     // MCQ, SCENARIO
+  options      String[]   // JSON array of options
+  correctIndex Int
+  skillTag     String
+  explanation  String
+}
+
+model AssessmentResult {
+  id           String     @id @default(uuid())
+  studentId    String
+  student      Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id])
+  scoreAchieved Float
+  totalScore   Float
+  percentage   Float
+  passed       Boolean
+  completedAt  DateTime   @default(now())
+}
+
+model SkillAssessment {
+  id                String            @id @default(uuid())
+  studentId         String
+  student           Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  skillId           String
+  skill             Skill             @relation(fields: [skillId], references: [id])
+  proficiency       Float             // 0 to 100%
+  verificationLevel VerificationLevel @default(SELF_DECLARED)
+  lastAssessedAt    DateTime          @default(now())
+
+  verifications     Verification[]
+
+  @@unique([studentId, skillId])
+}
+
+model SkillGap {
+  id                  String   @id @default(uuid())
+  studentId           String
+  student             Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  skillId             String
+  skill               Skill    @relation(fields: [skillId], references: [id])
+  targetCareer        String
+  requiredScore       Float    // Benchmark score (e.g. 70%)
+  currentScore        Float    // Student current score (e.g. 42%)
+  gapPercentage       Float    // e.g. 28%
+  priority            String   // HIGH, MEDIUM, LOW
+  whyGapExplanation   String
+  howToCloseRoadmap   String
+}
+
+model CareerPath {
+  id                String   @id @default(uuid())
+  title             String   // e.g., "Clinical Research Fellow", "AYUSH Product Developer"
+  description       String
+  averageSalary     String
+  growthRate        String
+  demandScore       Float
+  requiredSkillIds  String[]
+}
+
+model CareerRoadmap {
+  id             String            @id @default(uuid())
+  studentId      String
+  student        Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  targetCareer   String
+  durationWeeks  Int               @default(4)
+  targetReadiness Float            @default(90.0)
+  items          RoadmapItem[]
+  createdAt      DateTime          @default(now())
+}
+
+model RoadmapItem {
+  id             String        @id @default(uuid())
+  roadmapId      String
+  roadmap        CareerRoadmap @relation(fields: [roadmapId], references: [id], onDelete: Cascade)
+  weekNumber     Int
+  title          String
+  description    String
+  skillGained    String
+  difficulty     String        // Beginner, Intermediate, Advanced
+  estimatedHours Int
+  resourceLink   String?
+  isCompleted    Boolean       @default(false)
+}
+
+model Course {
+  id          String        @id @default(uuid())
+  title       String        // e.g. "AYUSH Clinical Data Analysis"
+  provider    String        // e.g. "AIIA Digital Academy"
+  durationHrs Int
+  level       String
+  thumbnail   String?
+  description String
+  skills      CourseSkill[]
+}
+
+model CourseSkill {
+  id       String @id @default(uuid())
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  skillId  String
+  skill    Skill  @relation(fields: [skillId], references: [id])
+}
+
+model Portfolio {
+  id          String              @id @default(uuid())
+  studentId   String              @unique
+  student     Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  summary     String?
+  projects    Project[]
+  evidences   PortfolioEvidence[]
+  certificates Certificate[]
+}
+
+model Project {
+  id             String    @id @default(uuid())
+  portfolioId    String
+  portfolio      Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  title          String    // e.g. "AYUSH interventions for stress management"
+  description    String
+  startDate      DateTime
+  endDate        DateTime?
+  skillsUsed     String[]
+  evidenceUrl    String?
+  facultyStatus  String    @default("PENDING") // PENDING, APPROVED, REVISION_REQUESTED
+  industryStatus String    @default("UNREVIEWED")
+}
+
+model PortfolioEvidence {
+  id                String            @id @default(uuid())
+  portfolioId       String
+  portfolio         Portfolio         @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  skillId           String
+  skill             Skill             @relation(fields: [skillId], references: [id])
+  evidenceType      String            // ASSESSMENT, PROJECT, CERTIFICATE, INTERNSHIP
+  title             String
+  proofUrl          String?
+  verificationLevel VerificationLevel @default(SELF_DECLARED)
+  verifiedAt        DateTime?
+}
+
+model Certificate {
+  id             String    @id @default(uuid())
+  portfolioId    String
+  portfolio      Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  title          String
+  issuingOrg     String
+  issueDate      DateTime
+  credentialId   String?
+  verificationSrc String   @default("DIGILOCKER_READY")
+}
+
+model Verification {
+  id                String            @id @default(uuid())
+  skillAssessmentId String
+  skillAssessment   SkillAssessment   @relation(fields: [skillAssessmentId], references: [id], onDelete: Cascade)
+  facultyId         String?
+  faculty           Faculty?          @relation(fields: [facultyId], references: [id])
+  level             VerificationLevel
+  verifiedAt        DateTime          @default(now())
+  remarks           String?
+}
+
+model Opportunity {
+  id               String             @id @default(uuid())
+  industryId       String
+  industry         Industry           @relation(fields: [industryId], references: [id], onDelete: Cascade)
+  type             OpportunityType
+  title            String             // e.g. "Clinical Research Intern"
+  description      String
+  discipline       DisciplineType
+  workMode         WorkMode           @default(ON_SITE)
+  location         String
+  durationMonths   Int
+  stipend          String
+  openings         Int                @default(1)
+  status           String             @default("ACTIVE")
+  createdAt        DateTime           @default(now())
+  
+  requiredSkills   OpportunitySkill[]
+  applications     Application[]
+}
+
+model OpportunitySkill {
+  id            String      @id @default(uuid())
+  opportunityId String
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  skillId       String
+  skill         Skill       @relation(fields: [skillId], references: [id])
+  weight        Float       @default(1.0)
+}
+
+model Application {
+  id             String            @id @default(uuid())
+  opportunityId  String
+  opportunity    Opportunity       @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  studentId      String
+  student        Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  appliedDate    DateTime          @default(now())
+  matchScore     Float             // e.g. 92%
+  matchBreakdown Json              // Transparent scoring object
+  status         ApplicationStatus @default(SUBMITTED)
+  recruiterNotes String?
+}
+
+model IndustryProject {
+  id           String   @id @default(uuid())
+  industryId   String
+  industry     Industry @relation(fields: [industryId], references: [id])
+  title        String   // e.g. "AI-based Ayurvedic Literature Analysis"
+  description  String
+  skillsNeeded String[]
+  duration     String
+  teamSize     Int
+  mentor       String
+  status       String   @default("OPEN")
+}
+
+model Mentorship {
+  id             String    @id @default(uuid())
+  studentId      String
+  student        Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  facultyId      String
+  faculty        Faculty   @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  topic          String
+  status         String    @default("ACTIVE")
+  nextMeeting    DateTime?
+}
+
+model FacultyFeedback {
+  id         String   @id @default(uuid())
+  studentId  String
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  facultyId  String
+  faculty    Faculty  @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  feedback   String
+  rating     Float
+  createdAt  DateTime @default(now())
+}
+
+model IndustryFeedback {
+  id         String   @id @default(uuid())
+  studentId  String
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  industryId String
+  industry   Industry @relation(fields: [industryId], references: [id], onDelete: Cascade)
+  feedback   String
+  rating     Float
+  createdAt  DateTime @default(now())
+}
+
+model IndustrySkillDemand {
+  id             String   @id @default(uuid())
+  industryId     String
+  industry       Industry @relation(fields: [industryId], references: [id])
+  skillId        String
+  skill          Skill    @relation(fields: [skillId], references: [id])
+  demandScore    Float    // e.g. 86%
+  projectedGrowth Float
+  quarter        String   // e.g. "Q3 2026"
+}
+
+model InstitutionSkillAnalytics {
+  id             String      @id @default(uuid())
+  institutionId  String
+  institution    Institution @relation(fields: [institutionId], references: [id])
+  skillCategory  String
+  averageScore   Float
+  industryDemand Float
+  gapPercentage  Float
+  updatedAt      DateTime    @default(now())
+}
+
+model CurriculumRecommendation {
+  id            String      @id @default(uuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id])
+  skillGapTitle String      // e.g. "Digital Health & Data Analytics"
+  demandScore   Float       // 82%
+  studentScore  Float       // 31%
+  priority      String      // HIGH_PRIORITY
+  actionPlan    String[]    // 5-step institutional remediation plan
+  status        String      @default("PENDING_REVIEW")
+}
+
+model MoU {
+  id            String      @id @default(uuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id])
+  industryId    String
+  industry      Industry    @relation(fields: [industryId], references: [id])
+  purpose       String      // e.g. "Clinical Training & Research Fellowship"
+  studentsCovered Int       @default(20)
+  validUntil    DateTime
+  status        String      @default("ACTIVE")
+}
+
+model TrainingProgram {
+  id          String   @id @default(uuid())
+  title       String
+  organizer   String
+  discipline  DisciplineType
+  duration    String
+  capacity    Int
+  startDate   DateTime
+}
+
+model FDP {
+  id           String          @id @default(uuid())
+  title        String          // e.g. "Evidence-Based Ayurveda Research"
+  organizer    String
+  durationDays Int
+  startDate    DateTime
+  capacity     Int
+  attendances  FDPAttendance[]
+}
+
+model FDPAttendance {
+  id        String   @id @default(uuid())
+  fdpId     String
+  fdp       FDP      @relation(fields: [fdpId], references: [id], onDelete: Cascade)
+  facultyId String
+  faculty   Faculty  @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  status    String   @default("REGISTERED")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   // SKILL, MATCH, VERIFICATION, MENTOR, GAP
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model CalendarEvent {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  type      String   // INTERVIEW, MENTOR_SESSION, FDP, WORKSHOP, DEADLINE
+  startTime DateTime
+  endTime   DateTime
+  location  String
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String
+  details   String?
+  timestamp DateTime @default(now())
+}

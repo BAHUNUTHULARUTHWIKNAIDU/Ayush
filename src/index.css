@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-[#F4F9F7] text-slate-900 font-sans antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Subtle botanical ambient patterns */
+.ayush-mesh-bg {
+  background-color: #073635;
+  background-image: 
+    radial-gradient(at 10% 10%, rgba(24, 155, 152, 0.25) 0px, transparent 50%),
+    radial-gradient(at 90% 20%, rgba(34, 197, 94, 0.2) 0px, transparent 50%),
+    radial-gradient(at 50% 80%, rgba(13, 92, 91, 0.4) 0px, transparent 60%);
+}
+
+.ayush-card-gradient {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(246, 251, 249, 0.95) 100%);
+}
+
+.ayush-hero-gradient {
+  background: radial-gradient(circle at 50% 0%, #0d5c5b 0%, #073635 100%);
+}
+
+@keyframes pulseSubtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.animate-pulse-subtle {
+  animation: pulseSubtle 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+.animate-float {
+  animation: floatSlow 4s ease-in-out infinite;
+}
